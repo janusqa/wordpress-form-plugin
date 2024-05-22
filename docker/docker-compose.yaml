@@ -1,0 +1,89 @@
+version: '3.1'
+
+services:
+    ui:
+        image: wordpress:latest
+        depends_on:
+            - db
+            - mailhog
+        restart: always
+        ports:
+            - 8080:80
+        environment:
+            # VIRTUAL_HOST: wordpress-dev.wordpress.webdev.test
+            WORDPRESS_DB_HOST: db
+            WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+            WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+            WORDPRESS_DB_NAME: wordpressdev
+        volumes:
+            - ../src:/var/www/html # chown -R www-data:<youruser> ./src , chmod -R g+rwx ./src
+            - ./volumes/conf/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+        networks:
+            - wordpress-dev
+
+    db:
+        image: mysql:latest
+        # use this command for mysql 8 or greater. It changed auth sheme
+        command: '--default-authentication-plugin=mysql_native_password'
+        restart: always
+        ports:
+            - 33306:3306
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+        volumes:
+            - ./volumes/db:/var/lib/mysql
+        networks:
+            - wordpress-dev
+
+    # mailhog
+    # use with mailhog for wordpress plugin.
+    # must edit the plugin file to change the host name there
+    # to match the internal docker hostname (mailhog) in this file.
+    # change define( 'WP_MAILHOG_HOST', '127.0.0.1' ); to define( 'WP_MAILHOG_HOST', 'mailhog' );
+    mailhog:
+        image: mailhog/mailhog:latest
+        # environment:
+        #   VIRTUAL_HOST: mailhog.webdev.test
+        #   VIRTUAL_PORT: 8025
+        ports:
+            - 8025:8025
+        networks:
+            - wordpress-dev
+
+    pma:
+        image: phpmyadmin:latest
+        depends_on:
+            - db
+        restart: always
+        ports:
+            - 8081:80
+        environment:
+            # VIRTUAL_HOST: phpmyadmin.webdev.test
+            PMA_ARBITRARY: 1
+            PMA_HOST: db
+            PMA_PORT: 3306
+            # PMA_ABSOLUTE_URI: https;//phpmyadmin.webdev.test # Set when using a reverse proxy
+        volumes:
+            - ./volumes/pma/sessions:/sessions # sudo chown -R www-data:www-data ./sessions
+        networks:
+            - wordpress-dev
+
+    # reverseproxy:
+    #   image: jwilder/nginx-proxy:latest
+    #   depends_on:
+    #     - ui
+    #     - pma
+    #   ports:
+    #     - 80:80
+    #     - 443:443
+    #   volumes:
+    #     - /var/run/docker.sock:/tmp/docker.sock:ro
+    #     - ./volumes/reverseproxy/certs:/etc/nginx/certs:ro
+    #     - ./volumes/reverseproxy/certs/dhparam.pem:/etc/nginx/dhparam/dhparam.pem:ro
+    #     - ./volumes/reverseproxy/logs:/var/log/nginx:rw
+    #     - ./volumes/reverseproxy/conf.d/wordpress.conf:/etc/nginx/conf.d/wordpress.conf:ro
+    #   networks:
+    #     - wordpress-dev
+
+networks:
+    wordpress-dev:
