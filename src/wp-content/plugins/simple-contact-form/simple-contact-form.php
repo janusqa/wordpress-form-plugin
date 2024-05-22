@@ -8,3 +8,7 @@
  * Version: 1.0.0
  * Text Domain: simple-contact-form
  */
+
+if (!defined('ABSPATH')) exit;
+
+echo "Hello";
