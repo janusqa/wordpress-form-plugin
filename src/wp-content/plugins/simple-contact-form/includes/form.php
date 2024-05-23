@@ -34,21 +34,23 @@ function process_form(WP_REST_Request $request)
     $headers = [];
     $headers[] = "From: {$sender['name']} <{$sender['email']}>";
     $headers[] = "Reply-to: {$data['name']} <{$data['email']}>";
+    $headers[] = "Content-Type: text/html";
 
     $subject = "New enquiry from {$data['name']}";
 
-    $message = "Message has been sent from {$data['name']}.\n";
+    $message = "<h1>Message has been sent from {$data['name']}</h1>";
     foreach ($data as $key => $value) {
-        $message .= ucfirst($key) . ":" . $value . "\n";
+        $message .= "<strong>" . ucfirst($key) . ":</strong>&nbsp;" . $value . "<br/>";
     }
 
     $response = new WP_REST_Response();
+    $response->set_headers(array("Content-type" => "application/json"));
     try {
         wp_mail($sender['email'], $subject, $message, $headers);
-        $response->set_data("Message Sent!");
+        $response->set_data(array("message" => "Message Sent!"));
         $response->set_status(200);
     } catch (Exception $e) {
-        $response->set_data("Something went wrong: {$e->getMessage()}");
+        $response->set_data(array("message" => "Something went wrong: {$e->getMessage()}"));
         $response->set_status(500);
     }
     return $response;
