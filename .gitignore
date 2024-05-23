@@ -49,3 +49,4 @@
 
 /docker/volumes
 /docker/.env
+**vendor/

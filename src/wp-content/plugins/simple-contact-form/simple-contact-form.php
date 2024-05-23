@@ -11,32 +11,25 @@
 
 if (!defined('ABSPATH')) exit;
 
-class SimpleContactForm
-{
+if (!class_exists('SimpleContactForm')) {
 
-    public function __construct()
+    class SimpleContactForm
     {
-        add_action('init', array($this, 'create_custom_post_type'));
+
+        public function __construct()
+        {
+            define('SIMPLE_CONTACT_FORM_PLUGIN_PATH', plugin_dir_path(__FILE__));
+            require_once(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/vendor/autoload.php');
+        }
+
+        public function initialize()
+        {
+            include_once(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/includes/utilities.php');
+            include_once(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/includes/options.php');
+            include_once(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/includes/form.php');
+        }
     }
 
-    public function create_custom_post_type()
-    {
-        $args = array(
-            'public' => true,
-            'has_archive' => true,
-            'supports' => array('title'),
-            'eclude_from_search' => true,
-            'publicly_querable' => false,
-            'capability' => 'manage_options',
-            'labels' => array(
-                'name' => 'Contact Form',
-                'singular_name' => 'Contact Form Entry'
-            ),
-            'menu_icon' => 'dashicons-media-text' // Dashicons | Wordpress Developer Resources
-        );
-
-        register_post_type('simple_contact_form', $args);
-    }
+    $simpleContactForm = new SimpleContactForm;
+    $simpleContactForm->initialize();
 }
-
-new SimpleContactForm;
