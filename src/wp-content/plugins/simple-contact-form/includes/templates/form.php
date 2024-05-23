@@ -1,4 +1,5 @@
 <form id="simple_contact_form" style="display:flex; flex-direction:column; gap: 2px; width:25%">
+    <?php wp_nonce_field('wp_rest'); ?> <!-- portect form from bots -->
     <label>Name:</label>
     <input type="text" name="name">
     <label>Email:</label>
