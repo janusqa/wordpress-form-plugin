@@ -5,6 +5,13 @@ add_action('rest_api_init', 'process_form_rest_api_endpoint'); // hook our funct
 add_action('init', 'create_post_type'); // create custom post type for the plugin
 add_action('add_meta_boxes', 'create_meta_box');
 
+// this allows us to put the fields from our data as coloumns on custome post type page
+add_filter('manage_scformsubmission_posts_columns', 'create_custom_submission_columns');
+// we need to add a priority to make this load after all other actions. We give it a priority of 10
+// additional the callback accepts 2 args so we specify that as well
+add_action('manage_scformsubmission_posts_custom_column', 'hydrate_custom_submission_columns', 10, 2);
+// make post search work for all columns
+add_action('admin_init', 'configure_search');
 
 function display_form()
 {
@@ -45,7 +52,7 @@ function process_form(WP_REST_Request $request)
 
     $postarr = [
         'post_title' => $data['name'],
-        'post_type' => 'SCForm Submission',
+        'post_type' => 'scformsubmission',
         'post_status' => 'publish' // enter post and set as published. It now will not show as draft in the post types
     ];
     $post_id = wp_insert_post($postarr);
@@ -86,12 +93,12 @@ function create_post_type()
 
     ];
 
-    register_post_type('SCForm Submission', $args);
+    register_post_type('scformsubmission', $args);
 }
 
 function create_meta_box()
 {
-    add_meta_box('simple_contact_form', 'SCForm Submission', 'display_submission', 'SCForm Submission');
+    add_meta_box('simple_contact_form', 'SCForm Submission', 'display_submission', 'scformsubmission');
 }
 
 function display_submission()
@@ -107,4 +114,71 @@ function display_submission()
 
     // example of hardcoding the meta (without looping)
     // echo "Name:" . get_post_meta(get_the_ID(), 'name', true);
+}
+
+// $columns is injected into this callback by the add_filter hook
+function create_custom_submission_columns($columns)
+{
+    $columns = [
+        'cb' => $columns['cb'],
+        'name' => __('Name', 'simple-contact-form'),
+        'email' => __('Email', 'simple-contact-form'),
+        'phone' => __('Phone', 'simple-contact-form'),
+        'message' => __('Message', 'simple-contact-form'),
+    ];
+
+    return $columns;
+}
+
+function hydrate_custom_submission_columns($column, $post_id)
+{
+    echo get_post_meta($post_id, $column, true);
+
+    // switch ($column) {
+    //     case 'name':
+    //         echo get_post_meta($post_id, 'name', true);
+    //          break;
+    //      case 'email':
+    //          echo get_post_meta($post_id,'email', true);
+    //          break;
+    //      case 'phone':
+    //          echo get_post_meta($post_id,'phone', true);
+    //          break;
+    //      case 'message':
+    //          echo get_post_meta($post_id,'message', true);
+    //          break;
+    // }
+}
+
+function configure_search()
+{
+    global $typenow;
+    if ($typenow === 'scformsubmission') {
+        add_filter('posts_search', 'scformsubmission_search_override', 10, 2);
+    }
+}
+
+function scformsubmission_search_override($search, $query)
+{
+    // Override the submissions page search to include custom meta data
+
+    global $wpdb;
+
+    if ($query->is_main_query() && !empty($query->query['s'])) {
+        $sql = "
+                or exists (
+                    select * from {$wpdb->postmeta} where post_id={$wpdb->posts}.ID
+                    and meta_key in ('name','email','phone')
+                    and meta_value like %s
+                )
+            ";
+        $like   = '%' . $wpdb->esc_like($query->query['s']) . '%';
+        $search = preg_replace(
+            "#\({$wpdb->posts}.post_title LIKE [^)]+\)\K#",
+            $wpdb->prepare($sql, $like),
+            $search
+        );
+    }
+
+    return $search;
 }
