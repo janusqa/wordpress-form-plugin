@@ -19,6 +19,7 @@ if (!class_exists('SimpleContactForm')) {
         public function __construct()
         {
             define('SIMPLE_CONTACT_FORM_PLUGIN_PATH', plugin_dir_path(__FILE__));
+            define('SIMPLE_CONTACT_FORM_PLUGIN_URL', plugin_dir_url(__FILE__));
             require_once(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/vendor/autoload.php');
         }
 

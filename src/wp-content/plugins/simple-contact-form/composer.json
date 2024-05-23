@@ -1,7 +1,7 @@
 {
     "config": {
         "allow-plugins": {
-            "composer/installers": true
+            "composer/installers": false
         }
     },
     "require": {

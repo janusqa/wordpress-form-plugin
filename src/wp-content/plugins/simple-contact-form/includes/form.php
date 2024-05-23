@@ -13,6 +13,10 @@ add_action('manage_scformsubmission_posts_custom_column', 'hydrate_custom_submis
 // make post search work for all columns
 add_action('admin_init', 'configure_search');
 
+// enables us to integrate css/js for our plugin
+add_action('wp_enqueue_scripts', 'enqueue_custom_scripts');
+
+
 function display_form()
 {
     include(SIMPLE_CONTACT_FORM_PLUGIN_PATH . '/includes/templates/form.php');
@@ -58,8 +62,8 @@ function process_form(WP_REST_Request $request)
     $post_id = wp_insert_post($postarr);
 
     foreach ($data as $key => $value) {
-        $message .= "<strong>" . ucfirst($key) . ":</strong>&nbsp;" . $value . "<br/>";
-        add_post_meta($post_id, $key, $value);
+        $message .= "<strong>" . ucfirst($key) . ":</strong>&nbsp;" . sanitize_text_field($value) . "<br/>";
+        add_post_meta($post_id, $key, sanitize_text_field($value));
     }
 
     $response = new WP_REST_Response();
@@ -181,4 +185,9 @@ function scformsubmission_search_override($search, $query)
     }
 
     return $search;
+}
+
+function enqueue_custom_scripts()
+{
+    wp_enqueue_style('simple-contact-form', SIMPLE_CONTACT_FORM_PLUGIN_URL . 'assets/css/simple-contact-form.css');
 }
