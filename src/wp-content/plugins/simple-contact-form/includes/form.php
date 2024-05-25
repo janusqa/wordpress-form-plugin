@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 
 add_shortcode('simple_contact_form', 'display_form');
 add_action('rest_api_init', 'process_form_rest_api_endpoint'); // hook our function into wp as rest endpoint
@@ -43,7 +44,15 @@ function process_form(WP_REST_Request $request)
     unset($data['_wpnonce']);
     unset($data['_wp_http_referer']);
 
-    $sender = array('email' => get_bloginfo('admin_email'), 'name' => get_bloginfo('name'));
+    foreach ($data as $key => $value) {
+        $data[$key] = sanitize_text_field($value);
+    }
+
+    $plugin_recipient = get_plugin_options('simple_contact_form_recipient');
+    $sender = [
+        'email' => IsNullOrEmptyString($plugin_recipient) ? get_bloginfo('admin_email') : $plugin_recipient,
+        'name' => get_bloginfo('name')
+    ];
 
     $headers = [];
     $headers[] = "From: {$sender['name']} <{$sender['email']}>";
@@ -62,15 +71,20 @@ function process_form(WP_REST_Request $request)
     $post_id = wp_insert_post($postarr);
 
     foreach ($data as $key => $value) {
-        $message .= "<strong>" . ucfirst($key) . ":</strong>&nbsp;" . sanitize_text_field($value) . "<br/>";
-        add_post_meta($post_id, $key, sanitize_text_field($value));
+        $message .= "<strong>" . ucfirst($key) . ":</strong>&nbsp;" . $value . "<br/>";
+        add_post_meta($post_id, $key, $value);
     }
 
     $response = new WP_REST_Response();
     $response->set_headers(array("Content-type" => "application/json"));
     try {
         wp_mail($sender['email'], $subject, $message, $headers);
-        $response->set_data(array("message" => "Message Sent!"));
+        $message = get_plugin_options('simple_contact_form_confirmation_message');
+        $response->set_data([
+            "message" => IsNullOrEmptyString($message)
+                ? "Message Sent!"
+                : str_replace('{name}', $data['name'], $message)
+        ]);
         $response->set_status(200);
     } catch (Exception $e) {
         $response->set_data(array("message" => "Something went wrong: {$e->getMessage()}"));
@@ -83,10 +97,12 @@ function create_post_type()
 {
     $args = [
         'public' => true,
+        'publicly_queryable' => false, // hides post from being visible on frontend
         'has_archive' => true,
         'labels' => [
             'name' => 'SCForm Submissions',
-            'singular_name' => 'SCForm Submission'
+            'singular_name' => 'SCForm Submission',
+            'edit_item' => 'View Submission'
         ],
         'capability_type' => 'post',
         'capabilities' => [
